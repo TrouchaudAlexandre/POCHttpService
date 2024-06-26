@@ -1,4 +1,4 @@
-import {RequestParameters} from "./http.type";
+import type {RequestParameters} from "./http.type";
 
 export function buildKeyFromArguments(path: string, args?: RequestParameters): string {
   if (args == null) {

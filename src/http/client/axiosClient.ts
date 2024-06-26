@@ -1,30 +1,63 @@
-import type {AxiosInstance,AxiosResponse} from 'axios';
+import type { AxiosInstance, AxiosResponse, InternalAxiosRequestConfig } from 'axios'
 import Axios from 'axios';
-import { from , Observable } from 'rxjs';
 
-import type {HttpClient, HttpResponse} from '../http.type';
+import type {
+  HttpClient,
+  HttpResponse,
+  InterceptorHandler,
+  RequestConfig,
+  RequestInterceptorFn,
+  RequestParameters
+} from '../http.type'
+import {from, Observable} from "rxjs";
 
-export function createAxiosClient(baseURL: string = import.meta.env.VITE_BASE_URL): HttpClient {
+export function createAxiosClient(baseURL: string = import.meta.env.VITE_API_URL): HttpClient {
   const client: AxiosInstance = Axios.create({
     baseURL,
     headers: {
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
     },
   });
 
-  function get<T>(url: string, params?: any): Observable<HttpResponse<T>> {
-    return from(client.get<T>(url, { params }).then(toHttpResponse));
+  function adaptConfigForAxios(config: RequestConfig): InternalAxiosRequestConfig {
+    return config as unknown as InternalAxiosRequestConfig;
   }
 
-  function post<T>(url: string, body: any = {}, config?: any): Observable<HttpResponse<T>> {
-    return from(client.post<T>(url, body, config).then(toHttpResponse));
+  function adaptConfigFromAxios(config: InternalAxiosRequestConfig): RequestConfig {
+    return config as unknown as RequestConfig;
   }
 
-  function patch<T>(url: string, body: any = {}, config?: any): Observable<HttpResponse<T>> {
-    return from(client.patch<T>(url, body, config).then(toHttpResponse));
+  function setRequestInterceptor(fnInterceptor: RequestInterceptorFn): InterceptorHandler {
+    const adaptedInterceptor = (axiosConfig: InternalAxiosRequestConfig) => {
+      const customConfig = adaptConfigFromAxios(axiosConfig);
+      const resultConfig = fnInterceptor(customConfig);
+      if (resultConfig instanceof Promise) {
+        return resultConfig.then(adaptConfigForAxios);
+      }
+      return adaptConfigForAxios(resultConfig);
+    };
+
+    const id = client.interceptors.request.use(adaptedInterceptor);
+
+    return {
+      eject: () => client.interceptors.request.eject(id)
+    };
   }
 
-  return { get, post, patch };
+
+  function get<T>(url: string, requestParameters: RequestParameters): Observable<HttpResponse<T>> {
+    return from(client.get<T>(url, { params: requestParameters.params }).then(toHttpResponse));
+  }
+
+  function post<T>(url: string, requestParameters: RequestParameters): Observable<HttpResponse<T>> {
+    return from(client.post<T>(url, requestParameters.body, requestParameters.options).then(toHttpResponse));
+  }
+
+  function patch<T>(url: string, requestParameters: RequestParameters): Observable<HttpResponse<T>> {
+    return from(client.patch<T>(url, requestParameters.body, requestParameters.options).then(toHttpResponse));
+  }
+
+  return { get, post, patch, setRequestInterceptor};
 }
 
 function toHttpResponse<T>(response: AxiosResponse<T>): HttpResponse<T> {

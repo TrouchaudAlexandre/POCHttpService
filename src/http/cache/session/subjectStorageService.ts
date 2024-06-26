@@ -36,6 +36,7 @@ function reinitialiseByKeyword(keywords: string[]): void {
 
 function initialiseEmptySession(key: string): void {
   if (subjects[key] == null) {
+    console.log('enter here');
     subjects[key] = new BehaviorSubject({
       data: null,
       check: false,

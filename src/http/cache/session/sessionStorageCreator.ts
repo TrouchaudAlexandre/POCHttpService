@@ -6,5 +6,3 @@ export function createSessionStorage(): SessionStorage {
   return subjectStorageService;
 }
 
-export const sessionStorageService = createSessionStorage();
-
