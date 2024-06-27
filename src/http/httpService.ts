@@ -1,18 +1,11 @@
 import {createSessionStorage} from "./cache/session/sessionStorageCreator";
 import {createBrowserStorage} from "./cache/browser/browserStorageCreator";
-import type { HttpClientMethod, HttpResponse, RequestParameters, ResponseState } from './http.type'
+import type { HttpClientMethod, HttpResponse, RequestParameters } from './http.type'
 import {httpClient} from "./client/httpClientCreator";
 import {buildKeyFromArguments} from "./KeyBuilder";
 import type {DataStorage} from "./cache/data-storage.type";
-import {ref} from "vue";
-import type { Ref } from "vue";
-import {useLoader} from "./useLoader";
 import {Observable, of} from "rxjs";
 import {map, switchMap, tap} from "rxjs/operators";
-import {sessionStorageService} from "../http/cache/session/sessionStorageCreator";
-import {useSessionStorageStore} from "../httpPinia/cache/session/piniaStorageService";
-import httpService from "../http/httpService";
-import {browserStorageService} from "../http/cache/browser/browserStorageCreator";
 
 interface HttpService {
     get<T>(path: string, parameters?: RequestParameters): Observable<T>;
@@ -24,9 +17,10 @@ interface HttpService {
     postAndSavedInBrowser<T>(path: string, args?: RequestParameters): Observable<T>;
 }
 
+const sessionStorageService = createSessionStorage();
+const browserStorageService = createBrowserStorage();
+
 export function useHttpService(): HttpService {
-    const sessionStorageService = createSessionStorage();
-    const browserStorageService = createBrowserStorage();
 
     function get<T>(path: string, parameters?: RequestParameters): Observable<T> {
         return httpClient.get<T>(`${path}`, parameters?.params ?? {}).pipe(
@@ -113,7 +107,7 @@ export function useHttpService(): HttpService {
     }
 
     function performApiCall<T>(method: string, path: string, args: RequestParameters, key: string): Observable<T> {
-        return httpClient[method](path, args ?? {}).pipe(
+        return useHttpService()[method](path, args ?? {}).pipe(
             tap((apiResult) => {
                 sessionStorageService.setByKey(key, apiResult);
             }),
@@ -129,7 +123,7 @@ export function useHttpService(): HttpService {
         const dataFromBrowser = browserStorageService.getByKey(key);
 
         if (dataFromBrowser != null && dataFromBrowser !== '') {
-            httpService[method](path, args).pipe(
+            useHttpService()[method](path, args).pipe(
                 tap((resultFromAPI) => {
                     if (JSON.stringify(resultFromAPI) !== JSON.stringify(dataFromBrowser)) {
                         browserStorageService.setByKey(key, resultFromAPI);
@@ -139,7 +133,7 @@ export function useHttpService(): HttpService {
             ).subscribe();
             return of(dataFromBrowser as T);
         } else {
-            return httpService[method](path, args).pipe(
+            return useHttpService()[method](path, args).pipe(
                 tap((apiResult) => {
                     sessionStorageService.setCheckByKey(key, apiResult);
                     browserStorageService.setByKey(key, apiResult);

@@ -1,7 +1,7 @@
 import {compressData, decompressData} from "../../dataCompression";
 import type {BrowserStorage} from "../data-storage.type";
-import type { ExpiredBrowserStorageDuration } from '@/http/http.type'
 import moment from 'moment';
+import {ExpiredBrowserStorageDuration} from "../../http.type";
 
 const projectIdentifier = import.meta.env.VITE_BASE_PATH ?? 'ls';
 

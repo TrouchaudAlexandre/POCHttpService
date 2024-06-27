@@ -38,3 +38,4 @@ export type InterceptorHandler = {
   eject: (id: number) => void;
 };
 export type HttpClientMethod = Exclude<keyof HttpClient, 'setRequestInterceptor'>;
+export type ExpiredBrowserStorageDuration = 'never' | 'daily' | 'weekly' | 'monthly';
